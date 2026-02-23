@@ -52,7 +52,7 @@ Deployed on: **Render**
 1. Go to **Claude.ai → Settings → Integrations → MCP Servers → Add server**
 2. Paste this URL *(no account or login required)*:
    ```
-   https://x-research-mcp.onrender.com/sse
+   https://x-research-mcp.onrender.com/mcp
    ```
 
 **Step 2** — Register your X API bearer token (once):
@@ -67,7 +67,7 @@ Deployed on: **Render**
 
 5. In Claude.ai → Settings → Integrations → MCP Servers, replace the URL with your session URL:
    ```
-   https://x-research-mcp.onrender.com/sse?session_id=YOUR-SESSION-UUID
+   https://x-research-mcp.onrender.com/mcp?session_id=YOUR-SESSION-UUID
    ```
 6. **Done.** Your X API bearer token is saved. You'll never need to enter it again.
 
@@ -81,7 +81,7 @@ Deployed on: **Render**
 Just use your saved session URL in Claude.ai:
 
 ```
-https://x-research-mcp.onrender.com/sse?session_id=YOUR-SESSION-UUID
+https://x-research-mcp.onrender.com/mcp?session_id=YOUR-SESSION-UUID
 ```
 
 ---

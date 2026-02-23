@@ -4,23 +4,23 @@
  * Multi-tenant MCP server for querying X/Twitter data from Claude.ai.
  * Deployed on Render — no auth required to connect.
  *
- * Connection options:
- *   1. First-time setup  → GET /sse  (no params)
- *                          → call setup_session({bearer_token}) tool
- *                          → receive a permanent session URL to save in Claude.ai
+ * Uses Streamable HTTP transport (MCP spec 2025-03-26) — single /mcp endpoint.
  *
- *   2. Returning user    → GET /sse?session_id=UUID
- *                          → token loaded from Neon DB automatically — no re-entry needed
+ * Connection flow:
+ *   1. First-time  → POST /mcp  (no session_id)
+ *                 → call setup_session({bearer_token})
+ *                 → receive permanent mcp_url → update Claude.ai settings
  *
- *   3. Direct (advanced) → GET /sse?x_bearer_token=TOKEN
- *                          → auto-creates a session, returns session URL
+ *   2. Returning   → POST /mcp?session_id=UUID
+ *                 → token auto-loaded from DB — never re-enter token
  *
- * All tool interactions are logged to Neon Postgres (user_identifier, request, response, datetime).
+ * Tool interactions logged to Neon Postgres (user_identifier, tool, request, response).
  */
 
+import { randomUUID } from "crypto";
 import express from "express";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
@@ -39,16 +39,16 @@ const app = express();
 app.use(express.json());
 
 const PORT = parseInt(process.env.PORT || "3000");
-
-// Base public URL — set via PUBLIC_URL env var (configured in Apify)
 const PUBLIC_URL = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
 
-// Active SSE transports keyed by sessionId
-const transports = new Map<string, SSEServerTransport>();
+// Active MCP sessions: Mcp-Session-Id header value → {server, transport}
+const sessions = new Map<
+  string,
+  { server: Server; transport: StreamableHTTPServerTransport }
+>();
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
-/** The setup tool is always available — used on first connect or to retrieve session URL */
 const SETUP_TOOL: Tool = {
   name: "setup_session",
   description:
@@ -61,7 +61,8 @@ const SETUP_TOOL: Tool = {
       bearer_token: {
         type: "string",
         description:
-          "Your X API bearer token (starts with 'AAAA...'). Find it at https://developer.twitter.com/en/portal/dashboard",
+          "Your X API bearer token (starts with 'AAAA...'). " +
+          "Find it at https://developer.twitter.com/en/portal/dashboard",
       },
     },
     required: ["bearer_token"],
@@ -72,7 +73,8 @@ const X_TOOLS: Tool[] = [
   {
     name: "search_x",
     description:
-      "Search recent tweets on X/Twitter (last 7 days). Supports X search operators like from:user, #hashtag, \"exact phrase\", -is:retweet, etc.",
+      "Search recent tweets on X/Twitter (last 7 days). " +
+      'Supports X search operators like from:user, #hashtag, "exact phrase", -is:retweet, etc.',
     inputSchema: {
       type: "object",
       properties: {
@@ -153,18 +155,15 @@ const X_TOOLS: Tool[] = [
   },
 ];
 
-// ── MCP Server factory (one instance per SSE connection) ─────────────────────
+// ── MCP Server factory (one per connection) ────────────────────────────────────
 
-function createMcpServer(
-  bearerToken: string | null,
-  sessionId: string | null
-): Server {
+function createMcpServer(bearerToken: string | null, dbSessionId: string | null): Server {
   const server = new Server(
-    { name: "x-research-mcp", version: "1.1.0" },
+    { name: "x-research-mcp", version: "1.2.0" },
     { capabilities: { tools: {} } }
   );
 
-  // If no token yet, only expose setup_session
+  // No token → only setup_session; token present → all tools
   const tools: Tool[] = bearerToken ? [SETUP_TOOL, ...X_TOOLS] : [SETUP_TOOL];
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
@@ -173,40 +172,39 @@ function createMcpServer(
     const { name, arguments: args = {} } = request.params;
     let result: unknown;
     let isError = false;
-    let currentSessionId = sessionId;
 
     try {
-      // ── setup_session ──────────────────────────────────────────────────────
+      // ── setup_session ─────────────────────────────────────────────────────
       if (name === "setup_session") {
         const token = args["bearer_token"] as string;
-        if (!token || !token.trim()) {
-          throw new Error("bearer_token is required");
-        }
+        if (!token || !token.trim()) throw new Error("bearer_token is required");
 
         const newSessionId = await createSession(token.trim());
         const sessionUrl = PUBLIC_URL
-          ? `${PUBLIC_URL}/sse?session_id=${newSessionId}`
-          : `/sse?session_id=${newSessionId}`;
+          ? `${PUBLIC_URL}/mcp?session_id=${newSessionId}`
+          : `/mcp?session_id=${newSessionId}`;
 
         result = {
           success: true,
           session_id: newSessionId,
           mcp_url: sessionUrl,
           message:
-            "Your session is ready! Copy the mcp_url and use it as your MCP server address in Claude.ai " +
-            "(Settings → Integrations → MCP Servers). You will never need to enter your bearer token again.",
+            "Your session is ready! Copy the mcp_url and use it as your MCP server " +
+            "address in Claude.ai (Settings → Integrations → MCP Servers). " +
+            "You will never need to enter your bearer token again.",
           instructions: [
             "1. Copy the mcp_url shown above",
-            "2. In Claude.ai → Settings → Integrations → MCP Servers → Add server",
-            "3. Paste the mcp_url as the server URL",
-            "4. Disconnect from this session and reconnect using the new URL",
+            "2. In Claude.ai → Settings → Integrations → MCP Servers → Edit this server",
+            "3. Replace the current URL with the mcp_url",
+            "4. Save and reconnect — your token is now permanent",
           ],
         };
 
-      // ── X tools (require bearer token) ────────────────────────────────────
+      // ── X tools ───────────────────────────────────────────────────────────
       } else if (!bearerToken) {
         throw new Error(
-          "No bearer token for this session. Please call setup_session({bearer_token: 'YOUR_TOKEN'}) first."
+          "No bearer token for this session. " +
+            "Please call setup_session({bearer_token: 'YOUR_TOKEN'}) first."
         );
       } else {
         switch (name) {
@@ -217,9 +215,7 @@ function createMcpServer(
               since: args["since"] as string | undefined,
             });
             if (args["min_likes"]) {
-              tweets = api.filterEngagement(tweets, {
-                minLikes: args["min_likes"] as number,
-              });
+              tweets = api.filterEngagement(tweets, { minLikes: args["min_likes"] as number });
             }
             if (args["sort"] && args["sort"] !== "recent") {
               tweets = api.sortBy(tweets, args["sort"] as "likes" | "impressions" | "retweets");
@@ -228,7 +224,6 @@ function createMcpServer(
             result = { tweets, count: tweets.length };
             break;
           }
-
           case "get_profile": {
             const { user, tweets } = await api.profile(
               bearerToken,
@@ -238,19 +233,16 @@ function createMcpServer(
             result = { user, tweets };
             break;
           }
-
           case "get_thread": {
             const tweets = await api.thread(bearerToken, args["tweet_id"] as string);
             result = { tweets, count: tweets.length };
             break;
           }
-
           case "get_tweet": {
             const tweet = await api.getTweet(bearerToken, args["tweet_id"] as string);
             result = { tweet };
             break;
           }
-
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -260,12 +252,12 @@ function createMcpServer(
       isError = true;
     }
 
-    // Log interaction non-blocking — don't fail the request if DB is down
+    // Non-blocking DB log
     logInteraction({
       toolName: name,
       request: { tool: name, arguments: args },
       response: result,
-      userIdentifier: currentSessionId,
+      userIdentifier: dbSessionId,
     }).catch((dbErr) => console.error("DB log failed:", dbErr));
 
     return {
@@ -280,94 +272,84 @@ function createMcpServer(
 // ── HTTP routes ───────────────────────────────────────────────────────────────
 
 /**
- * Establish SSE connection.
+ * Primary MCP endpoint — Streamable HTTP transport (MCP spec 2025-03-26).
+ * Handles POST (initialize + requests), GET (SSE stream), DELETE (session end).
  *
- * Query params (all optional):
- *   session_id      — returning user with saved session
- *   x_bearer_token  — advanced/direct usage (also creates a session)
- *
- * No params → first-time user; only setup_session tool is available.
+ * Query param:
+ *   session_id  — our DB UUID; used to look up the bearer token on new connections.
+ *                 Persists across server restarts (stored in Neon Postgres).
  */
-app.get("/sse", async (req, res) => {
-  const bearerTokenParam = req.query["x_bearer_token"] as string | undefined;
-  const sessionIdParam = req.query["session_id"] as string | undefined;
+app.all("/mcp", async (req, res) => {
+  const ourSessionId = req.query["session_id"] as string | undefined;
+  const mcpSessionId = req.headers["mcp-session-id"] as string | undefined;
 
-  let bearerToken: string | null = null;
-  let sessionId: string | null = null;
-
-  if (sessionIdParam) {
-    // Returning user — look up token from DB
-    bearerToken = await getSessionToken(sessionIdParam).catch(() => null);
-    if (!bearerToken) {
-      res.status(401).json({
-        error: "Session not found or expired.",
-        help: "Connect without parameters and call setup_session to create a new session.",
-      });
-      return;
-    }
-    sessionId = sessionIdParam;
-    // Update last_used_at in background
-    touchSession(sessionIdParam).catch(() => {});
-    console.log(`Session ${sessionIdParam} reconnected.`);
-
-  } else if (bearerTokenParam) {
-    // Direct/advanced usage with raw token — auto-create a session
-    bearerToken = bearerTokenParam;
-    sessionId = await createSession(bearerToken).catch(() => null);
-    console.log(`Direct token connection — created session ${sessionId}.`);
-
-  } else {
-    // First-time user — no token yet, only setup_session will be exposed
-    console.log("New connection without token — setup_session tool available.");
-  }
-
-  const transport = new SSEServerTransport("/messages", res);
-  const server = createMcpServer(bearerToken, sessionId);
-
-  transports.set(transport.sessionId, transport);
-
-  res.on("close", () => {
-    transports.delete(transport.sessionId);
-    server.close().catch(() => {});
-    console.log(`Transport ${transport.sessionId} closed. Active: ${transports.size}`);
-  });
-
-  console.log(`SSE session ${transport.sessionId} started. Active: ${transports.size}`);
-  await server.connect(transport);
-});
-
-/** Receive messages from client */
-app.post("/messages", async (req, res) => {
-  const sessionId = req.query["sessionId"] as string;
-  const transport = transports.get(sessionId);
-
-  if (!transport) {
-    res.status(404).json({ error: `Session ${sessionId} not found or expired.` });
+  // ── Route to existing session ─────────────────────────────────────────────
+  if (mcpSessionId && sessions.has(mcpSessionId)) {
+    const { transport } = sessions.get(mcpSessionId)!;
+    await transport.handleRequest(req, res, req.body);
     return;
   }
 
-  await transport.handlePostMessage(req, res);
+  // ── New connection — resolve bearer token from DB ────────────────────────
+  let bearerToken: string | null = null;
+  const dbSessionId: string | null = ourSessionId ?? null;
+
+  if (ourSessionId) {
+    bearerToken = await getSessionToken(ourSessionId).catch(() => null);
+    if (!bearerToken) {
+      res.status(401).json({
+        error: "Session not found or expired.",
+        help: "Connect to /mcp (no session_id) and call setup_session to create a new session.",
+      });
+      return;
+    }
+    touchSession(ourSessionId).catch(() => {});
+    console.log(`DB session ${ourSessionId} reconnected.`);
+  } else {
+    console.log("New connection without token — setup_session only.");
+  }
+
+  // ── Create server + transport ─────────────────────────────────────────────
+  const server = createMcpServer(bearerToken, dbSessionId);
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+    onsessioninitialized: (sessionId) => {
+      sessions.set(sessionId, { server, transport });
+      console.log(`MCP session ${sessionId} started. Active: ${sessions.size}`);
+    },
+  });
+
+  transport.onclose = () => {
+    if (transport.sessionId) {
+      sessions.delete(transport.sessionId);
+      console.log(`MCP session ${transport.sessionId} closed. Active: ${sessions.size}`);
+    }
+    server.close().catch(() => {});
+  };
+
+  await server.connect(transport);
+  await transport.handleRequest(req, res, req.body);
 });
 
 /** Health check */
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
-    activeSessions: transports.size,
+    activeSessions: sessions.size,
     server: "x-research-mcp",
-    version: "1.1.0",
+    version: "1.2.0",
   });
 });
 
-/** Setup guide for first-time visitors */
+/** Quickstart guide */
 app.get("/", (_req, res) => {
   res.json({
     name: "X Research MCP Server",
-    version: "1.1.0",
+    version: "1.2.0",
     description: "Query X/Twitter data from Claude.ai using your X API bearer token.",
     quickstart: [
       "1. In Claude.ai → Settings → Integrations → MCP Servers",
-      `2. Add server URL: ${PUBLIC_URL || "https://YOUR_APIFY_URL"}/sse`,
+      `2. Add server URL: ${PUBLIC_URL || "https://YOUR_RENDER_URL"}/mcp`,
       "3. Call the setup_session tool with your X API bearer token",
       "4. Copy the returned mcp_url and update your Claude.ai MCP server address",
       "5. Done — your token is saved. You'll never need to enter it again.",
@@ -386,11 +368,10 @@ async function main() {
   }
 
   app.listen(PORT, () => {
-    console.log(`X Research MCP Server v1.1.0 listening on port ${PORT}`);
+    console.log(`X Research MCP Server v1.2.0 listening on port ${PORT}`);
     if (PUBLIC_URL) {
       console.log(`Public URL: ${PUBLIC_URL}`);
-      console.log(`Connect Claude.ai to: ${PUBLIC_URL}/sse`);
-      console.log(`First-time setup URL: ${PUBLIC_URL}/sse (no params — call setup_session)`);
+      console.log(`MCP endpoint: ${PUBLIC_URL}/mcp`);
     }
     console.log(`Health: http://localhost:${PORT}/health`);
   });
