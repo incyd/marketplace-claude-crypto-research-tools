@@ -1,0 +1,8 @@
+{
+  "actorSpecification": 1,
+  "name": "x-research-mcp-server",
+  "title": "X Research MCP Server",
+  "description": "Multi-tenant MCP server for querying X/Twitter data from Claude.ai. Each user connects with their own X API bearer token.",
+  "version": "1.0",
+  "dockerfile": "../Dockerfile"
+}

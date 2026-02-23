@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: x-research-mcp
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # set manually in Render dashboard (secret)
+      - key: PUBLIC_URL
+        sync: false   # set to your Render URL after first deploy
+    healthCheckPath: /health
+    autoDeploy: true
