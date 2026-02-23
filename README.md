@@ -30,15 +30,15 @@ Add this marketplace to Claude Code:
 
 A multi-tenant MCP server for querying X/Twitter data — connect directly from **Claude.ai / Claude Cowork** using your own X API bearer token.
 
-Hosted on Apify. No code to run — just connect.
+Hosted on Apify Standby. No code to run — just connect.
 
-**Base URL:** `https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor`
+**Base URL:** `https://lovable-kite--marketplace-claude-crypto-research-tools.apify.actor`
 
 ### What it does
 
 | Tool | Description |
 |------|-------------|
-| `setup_session` | Register your X API bearer token once — receive a permanent session URL |
+| `setup_session` | Register your X API bearer token once — receive a permanent session URL you can reuse |
 | `search_x` | Search recent tweets (last 7 days), filter by engagement, sort by likes / impressions / retweets |
 | `get_profile` | Fetch recent tweets from any X user |
 | `get_thread` | Retrieve a full conversation thread by tweet ID |
@@ -46,50 +46,41 @@ Hosted on Apify. No code to run — just connect.
 
 ---
 
-### First-time setup (takes 30 seconds)
+### Connecting from Claude.ai
 
-**Step 1 — Add the server to Claude.ai (no token needed yet)**
+#### Step 1 — Add the MCP server (first time only)
 
 1. Go to **Claude.ai → Settings → Integrations → MCP Servers → Add server**
-2. Paste this URL (no parameters):
+2. Paste the SSE URL with your Apify API token (required for private actor access):
    ```
-   https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor/sse
+   https://lovable-kite--marketplace-claude-crypto-research-tools.apify.actor/sse?token=YOUR_APIFY_TOKEN
+   ```
+   > Get your Apify token at [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations)
+
+#### Step 2 — Register your X API bearer token (once)
+
+3. In Claude, call:
+   ```
+   setup_session with bearer_token: AAAAAAAAAAAAAAAAAAAAAxxxx...
+   ```
+4. The tool returns a permanent `session_id`. Update your MCP server URL to:
+   ```
+   https://lovable-kite--marketplace-claude-crypto-research-tools.apify.actor/sse?token=YOUR_APIFY_TOKEN&session_id=YOUR_SESSION_ID
    ```
 
-**Step 2 — Register your X API bearer token**
+#### Step 3 — Done
 
-3. In Claude, call the `setup_session` tool:
-   ```
-   Call setup_session with my bearer token: AAAAAAAAAAAAAAAAAAAAAxxxx...
-   ```
-4. The tool returns a permanent `mcp_url` like:
-   ```
-   https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor/sse?session_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-   ```
-
-**Step 3 — Switch to your session URL**
-
-5. Go back to **Claude.ai → Settings → Integrations → MCP Servers**
-6. Replace the server URL with your `mcp_url` from step 4
-7. **Done.** Your bearer token is saved — you'll never need to enter it again.
+Your X API bearer token is saved. You'll never need to enter it again — just use the session URL above in Claude.ai.
 
 > **Where to find your X API bearer token:**
 > [developer.twitter.com → Dashboard → your App → Keys and Tokens → Bearer Token](https://developer.twitter.com/en/portal/dashboard)
 
 ---
 
-### Returning users
-
-Just connect using your saved session URL — no token required:
-
-```
-https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor/sse?session_id=YOUR_SESSION_UUID
-```
-
 ### Health check
 
 ```
-GET https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor/health
+GET https://lovable-kite--marketplace-claude-crypto-research-tools.apify.actor/health?token=YOUR_APIFY_TOKEN
 ```
 
 ---
