@@ -32,6 +32,8 @@ A multi-tenant MCP server for querying X/Twitter data — connect directly from 
 
 Hosted on Apify. No code to run — just connect.
 
+**Base URL:** `https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor`
+
 ### What it does
 
 | Tool | Description |
@@ -42,38 +44,59 @@ Hosted on Apify. No code to run — just connect.
 | `get_thread` | Retrieve a full conversation thread by tweet ID |
 | `get_tweet` | Look up a single tweet by ID |
 
+---
+
 ### First-time setup (takes 30 seconds)
 
-1. **Go to Claude.ai** → Settings → Integrations → MCP Servers → Add server
-2. **Paste the server URL** (no parameters):
+**Step 1 — Add the server to Claude.ai (no token needed yet)**
+
+1. Go to **Claude.ai → Settings → Integrations → MCP Servers → Add server**
+2. Paste this URL (no parameters):
    ```
-   https://YOUR_APIFY_URL/sse
+   https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor/sse
    ```
-3. **Call `setup_session`** in Claude with your X API bearer token:
+
+**Step 2 — Register your X API bearer token**
+
+3. In Claude, call the `setup_session` tool:
    ```
-   Call setup_session with bearer_token: AAAAAAAAAAAAAAAAAAAAAxxxx...
+   Call setup_session with my bearer token: AAAAAAAAAAAAAAAAAAAAAxxxx...
    ```
-4. **Copy the `mcp_url`** returned by the tool — it looks like:
+4. The tool returns a permanent `mcp_url` like:
    ```
-   https://YOUR_APIFY_URL/sse?session_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor/sse?session_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
    ```
-5. **Update your MCP server URL** in Claude.ai settings to the session URL
-6. **Done.** Your token is saved. You'll never need to enter it again.
+
+**Step 3 — Switch to your session URL**
+
+5. Go back to **Claude.ai → Settings → Integrations → MCP Servers**
+6. Replace the server URL with your `mcp_url` from step 4
+7. **Done.** Your bearer token is saved — you'll never need to enter it again.
 
 > **Where to find your X API bearer token:**
 > [developer.twitter.com → Dashboard → your App → Keys and Tokens → Bearer Token](https://developer.twitter.com/en/portal/dashboard)
+
+---
 
 ### Returning users
 
 Just connect using your saved session URL — no token required:
 
 ```
-https://YOUR_APIFY_URL/sse?session_id=YOUR_SESSION_UUID
+https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor/sse?session_id=YOUR_SESSION_UUID
 ```
+
+### Health check
+
+```
+GET https://marketplace-claude-crypto-research-tools.lovable_kite.apify.actor/health
+```
+
+---
 
 ### Privacy & logging
 
-Every tool call (request, response, timestamp, session identifier) is logged to a private Neon Postgres database for operational purposes. Raw bearer tokens are stored only in the sessions table and are never exposed in logs.
+Every tool call (request, response, timestamp, session identifier) is logged to a private Neon Postgres database. Bearer tokens are stored only in the sessions table — never exposed in interaction logs.
 
 ---
 
