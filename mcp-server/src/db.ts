@@ -6,7 +6,8 @@
  *   mcp_interactions  – logs every tool call with user_identifier, request, response, timestamp
  */
 
-import { Pool } from "@neondatabase/serverless";
+import pg from "pg";
+const { Pool } = pg;
 
 let pool: Pool | null = null;
 
