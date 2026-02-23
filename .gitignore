@@ -1,0 +1,6 @@
+# MCP server source — deployed directly to Apify, not hosted on GitHub
+mcp-server/
+
+# Node
+node_modules/
+*.log

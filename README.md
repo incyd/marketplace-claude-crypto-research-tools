@@ -28,40 +28,52 @@ Add this marketplace to Claude Code:
 
 ## X Research MCP Server
 
-A multi-tenant MCP server for querying X/Twitter data — usable directly from **Claude.ai / Claude Cowork**.
+A multi-tenant MCP server for querying X/Twitter data — connect directly from **Claude.ai / Claude Cowork** using your own X API bearer token.
 
-Source: [`mcp-server/`](./mcp-server/)
+Hosted on Apify. No code to run — just connect.
 
-### How it works
-
-Each user connects with their own X API bearer token via the server URL:
-
-```
-https://YOUR_APIFY_URL/sse?x_bearer_token=YOUR_X_BEARER_TOKEN
-```
-
-### Tools exposed
+### What it does
 
 | Tool | Description |
 |------|-------------|
-| `search_x` | Search recent tweets (last 7 days), sortable by likes/impressions/retweets |
-| `get_profile` | Get recent tweets from a specific user |
-| `get_thread` | Fetch a full conversation thread |
-| `get_tweet` | Fetch a single tweet by ID |
+| `setup_session` | Register your X API bearer token once — receive a permanent session URL |
+| `search_x` | Search recent tweets (last 7 days), filter by engagement, sort by likes / impressions / retweets |
+| `get_profile` | Fetch recent tweets from any X user |
+| `get_thread` | Retrieve a full conversation thread by tweet ID |
+| `get_tweet` | Look up a single tweet by ID |
 
-### Connecting from Claude.ai
+### First-time setup (takes 30 seconds)
 
-1. Go to **Settings → Integrations → MCP Servers**
-2. Add server URL: `https://YOUR_APIFY_URL/sse?x_bearer_token=YOUR_X_BEARER_TOKEN`
-3. Start querying X data directly in Claude
+1. **Go to Claude.ai** → Settings → Integrations → MCP Servers → Add server
+2. **Paste the server URL** (no parameters):
+   ```
+   https://YOUR_APIFY_URL/sse
+   ```
+3. **Call `setup_session`** in Claude with your X API bearer token:
+   ```
+   Call setup_session with bearer_token: AAAAAAAAAAAAAAAAAAAAAxxxx...
+   ```
+4. **Copy the `mcp_url`** returned by the tool — it looks like:
+   ```
+   https://YOUR_APIFY_URL/sse?session_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   ```
+5. **Update your MCP server URL** in Claude.ai settings to the session URL
+6. **Done.** Your token is saved. You'll never need to enter it again.
 
-### All interactions are logged
+> **Where to find your X API bearer token:**
+> [developer.twitter.com → Dashboard → your App → Keys and Tokens → Bearer Token](https://developer.twitter.com/en/portal/dashboard)
 
-Every request and response is stored in Neon Postgres:
+### Returning users
 
-```sql
-SELECT * FROM mcp_interactions ORDER BY created_at DESC;
+Just connect using your saved session URL — no token required:
+
 ```
+https://YOUR_APIFY_URL/sse?session_id=YOUR_SESSION_UUID
+```
+
+### Privacy & logging
+
+Every tool call (request, response, timestamp, session identifier) is logged to a private Neon Postgres database for operational purposes. Raw bearer tokens are stored only in the sessions table and are never exposed in logs.
 
 ---
 
