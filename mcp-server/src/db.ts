@@ -8,10 +8,11 @@
 
 import pg from "pg";
 const { Pool } = pg;
+type PoolInstance = InstanceType<typeof Pool>;
 
-let pool: Pool | null = null;
+let pool: PoolInstance | null = null;
 
-function getPool(): Pool {
+function getPool(): PoolInstance {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
