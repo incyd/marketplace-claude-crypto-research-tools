@@ -86,7 +86,3 @@ GET https://x-research-mcp.onrender.com/health
 > **Note:** The server runs on Render's free tier and may spin down after ~15 minutes of inactivity. The first connection after idle can take 30–60 seconds. Visit the health endpoint to pre-warm it.
 
 ---
-
-## 🔒 Privacy & Logging
-
-Every tool call (tool name, request, response, timestamp, session ID) is stored in a private Postgres database. Raw bearer tokens are stored only in the sessions table — never in interaction logs.
