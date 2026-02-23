@@ -4,14 +4,15 @@
     "name": "incyd"
   },
   "metadata": {
-    "description": "A curated collection of Claude Code tools for crypto research"
+    "description": "Claude Code plugins and MCP connectors for crypto research"
   },
   "plugins": [
     {
-      "name": "skills-master-mcp-setup-skill",
+      "name": "setup-skills-master-mcp",
       "source": {
         "source": "github",
-        "repo": "incyd/skills-master-mcp-setup-skill"
+        "repo": "incyd/marketplace-claude-crypto-research-tools",
+        "path": "plugins/setup-skills-master-mcp"
       },
       "description": "Install and configure the skills-master MCP server for Claude Code",
       "author": {

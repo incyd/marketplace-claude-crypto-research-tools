@@ -1,6 +1,6 @@
 # 🔬 Crypto Research Tools for Claude
 
-A curated marketplace of Claude Code plugins and MCP connectors for crypto research — search X/Twitter, track narratives, and surface alpha directly from Claude.
+A marketplace of Claude integrations for crypto research — an X/Twitter MCP connector for Claude.ai and a Claude Code skill for developer tooling.
 
 ---
 
@@ -16,47 +16,49 @@ A curated marketplace of Claude Code plugins and MCP connectors for crypto resea
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| [X Research MCP Connector](./connectors/x-research-mcp/) | MCP Server | Query X/Twitter data from Claude.ai — search tweets, profiles, threads |
-| [X Research Skill](./plugins/x-research/) | Claude Code Plugin | Claude Code skill for X research workflows |
+| [X Research MCP Connector](./connectors/x-research-mcp/) | Claude.ai MCP Server | Search X/Twitter, fetch profiles, threads, and tweets from Claude.ai |
+| [Setup Skills Master MCP](./plugins/setup-skills-master-mcp/) | Claude Code Skill | Configure the skills-master MCP server for Claude Code |
 
 ---
 
-## ⚡ Quick Install
+## ⚡ Setup
 
-### MCP Connector (Claude.ai)
+### X Research MCP Connector — Claude.ai
 
-Connect directly from Claude.ai — no account, no Apify, no friction:
+Add the MCP server URL in **Claude.ai → Settings → Integrations → MCP Servers**:
 
 ```
 https://x-research-mcp.onrender.com/mcp
 ```
 
-→ See [full setup guide](./connectors/x-research-mcp/)
+Then ask Claude to call `setup_session` with your X API bearer token to save it.
 
-### Claude Code Plugin
+→ [Full setup guide](./connectors/x-research-mcp/)
+
+---
+
+### Setup Skills Master MCP — Claude Code
 
 ```bash
-/plugin install x-research@claude-crypto-research-tools
+/plugin install setup-skills-master-mcp@claude-crypto-research-tools
 ```
 
-→ See [plugin docs](./plugins/x-research/)
+Then ask Claude: *"set up skills-master-mcp for this project"*
+
+→ [Plugin docs](./plugins/setup-skills-master-mcp/)
 
 ---
 
-## 🗂️ Categories
+## 🗂️ Structure
 
-### 📡 Social Intelligence
-Real-time X/Twitter data — search by keyword, filter by engagement, fetch threads and profiles.
-
-| Tool | What It Does |
-|------|-------------|
-| `search_x` | Search recent tweets with X operators, filter by likes/impressions |
-| `get_profile` | Fetch recent tweets from any account |
-| `get_thread` | Pull a full conversation thread |
-| `get_tweet` | Look up a single tweet by ID |
+```
+connectors/
+  x-research-mcp/     ← X Research MCP server (Claude.ai integration)
+plugins/
+  setup-skills-master-mcp/  ← Claude Code skill
+mcp-server/           ← Source code for the X Research MCP server
+```
 
 ---
 
-## 🔧 Maintained by
-
-[incyd](https://github.com/incyd)
+## 🔧 Maintained by [incyd](https://github.com/incyd)
