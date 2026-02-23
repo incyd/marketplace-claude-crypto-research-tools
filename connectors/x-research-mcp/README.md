@@ -2,7 +2,7 @@
 
 A **multi-tenant MCP server** for querying X/Twitter data — connect directly from **Claude.ai** using your own X API bearer token. No Apify account, no login, no friction.
 
-Deployed on **Render** · Source: [`mcp-server/`](../../mcp-server/)
+Deployed on **Render**
 
 ---
 

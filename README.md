@@ -53,10 +53,9 @@ Then ask Claude: *"set up skills-master-mcp for this project"*
 
 ```
 connectors/
-  x-research-mcp/     ← X Research MCP server (Claude.ai integration)
+  x-research-mcp/          ← X Research MCP server (Claude.ai integration)
 plugins/
-  setup-skills-master-mcp/  ← Claude Code skill
-mcp-server/           ← Source code for the X Research MCP server
+  setup-skills-master-mcp/ ← Claude Code skill
 ```
 
 ---
