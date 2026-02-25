@@ -63,7 +63,7 @@ A bearer token is a credential that lets the server read public X data on your b
 
 ### Step 2 — Add the MCP server to Claude.ai
 
-1. Go to **Claude.ai → Settings → Integrations → MCP Servers → Add server**
+1. Go to **Claude.ai → Settings → Connectors → Add custom connector**
 2. Paste this URL:
    ```
    https://x-research-mcp.onrender.com/mcp
