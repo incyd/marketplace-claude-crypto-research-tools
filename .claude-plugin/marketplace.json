@@ -11,15 +11,32 @@
       "name": "setup-skills-master-mcp",
       "source": {
         "source": "github",
-        "repo": "incyd/marketplace-claude-crypto-research-tools",
+        "repo": "incyd/claude-crypto-research-tools",
         "path": "plugins/setup-skills-master-mcp"
       },
-      "description": "Install and configure the skills-master MCP server for Claude Code",
+      "description": "Install and configure the skills-master MCP server for Claude Code. Trigger: /setup-skills-master-mcp",
       "author": {
         "name": "incyd"
       },
       "strict": false,
       "skills": ["./"]
+    }
+  ],
+  "connectors": [
+    {
+      "name": "x-research-mcp",
+      "path": "connectors/x-research-mcp",
+      "description": "X/Twitter research via MCP — bearer token auth, 5 tools"
+    },
+    {
+      "name": "netrows-x-mcp",
+      "path": "connectors/netrows-x-mcp",
+      "description": "X/Twitter research via Netrows API — no X developer account needed, 14 tools"
+    },
+    {
+      "name": "tavily-mcp",
+      "path": "connectors/tavily-mcp",
+      "description": "Real-time web search via Tavily AI — research and fact-checking"
     }
   ]
 }
