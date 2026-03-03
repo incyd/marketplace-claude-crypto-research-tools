@@ -29,14 +29,12 @@ Three options for connecting Claude to live data. Pick the one that fits your wo
 **When to use which:**
 
 - **Native X AI MCP** — best-in-class topic search and filter criteria (likes, impressions, date ranges). Ideal for trending narrative research and broad signal discovery. Use it when quality of results matters most and cost isn't a constraint.
-
 - **Netrows X MCP** — great free tier and solid overall value. Filtering is more limited but it excels at pulling tweets from individual accounts and KOLs. The go-to for account-level research without needing an X developer account.
-
 - **Tavily** — purpose-built for AI agents, not rate-limited like search engines. Best for pulling web context: protocol docs, TVL data from DeFiLlama, news articles, on-chain analytics. Use alongside an X connector for full coverage.
 
 ---
 
-### 🛠️ Plugins & Skills
+### 🛠️ Plugins
 
 | Plugin | What it does |
 |--------|-------------|
@@ -44,19 +42,17 @@ Three options for connecting Claude to live data. Pick the one that fits your wo
 
 ---
 
-### 📦 Skills Registry
+### 📦 Skills — 17 vetted
 
-17 vetted Claude Code skills across security, crypto research, content, orchestration, and quality. All passed skillvet's 48-check security scan.
+Community skills curated for crypto research workflows. All passed skillvet's 48-check security scan. → [Full catalog](./skills/) · [Install commands](./skills/INSTALL.md)
 
-→ **[Browse the full registry](./skills/)** · [One-liner installs](./skills/INSTALL.md) · [Raw JSON](./skills/skills-registry.json)
-
-| Category | Skills |
-|----------|--------|
-| 🔒 Security | skillvet |
-| 🌐 Domain | x-research, x-mastery, twitter-algorithm-optimizer, web3-research, competitive-analysis, brand-voice-extractor |
-| 📄 Document Creation | prd, senior-architect, prompt-engineering, design-serialization-schema |
-| 🤖 Orchestration | multi-agent-coordination, multi-agent-analysis, swarm-orchestration, agent-memory-systems |
-| ✅ Quality | humanizer, validator-role-skill |
+| Category | Skills | Count |
+|----------|--------|-------|
+| [🔒 Security](./skills/README.md#security-run-this-first) | skillvet | 1 |
+| [🌐 Domain](./skills/README.md#domain-crypto-web3-xtwitter) | x-research, x-mastery, twitter-algorithm-optimizer, web3-research, competitive-analysis, brand-voice-extractor | 6 |
+| [📄 Document Creation](./skills/README.md#document-creation) | prd, senior-architect, prompt-engineering, design-serialization-schema | 4 |
+| [🤖 Orchestration](./skills/README.md#orchestration) | multi-agent-coordination, multi-agent-analysis, swarm-orchestration, agent-memory-systems | 4 |
+| [✅ Quality](./skills/README.md#quality) | humanizer, validator-role-skill | 2 |
 
 ---
 
