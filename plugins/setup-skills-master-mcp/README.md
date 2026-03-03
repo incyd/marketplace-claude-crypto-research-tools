@@ -1,57 +1,50 @@
-# 🔧 Setup Skills Master MCP — Claude Code Skill
+# setup-skills-master-mcp
 
-A Claude Code skill that guides you through installing and configuring the [`skills-master-mcp`](https://github.com/davila7/skills-master-mcp) server — so you can search, install, and manage Claude Code skills from within Claude.
+Claude Code skill that fixes the nvm PATH issue when setting up skills-master-mcp.
 
----
+## One-liner install
 
-## 📦 Install
-
-```bash
-/plugin install setup-skills-master-mcp@claude-crypto-research-tools
-```
-
-Or add the full marketplace and install from there:
+Run this in your project directory:
 
 ```bash
-/plugin marketplace add incyd/marketplace-claude-crypto-research-tools
+curl -fsSL https://raw.githubusercontent.com/incyd/skills-master-mcp-setup-skill/main/install.sh | bash
 ```
 
----
+This will:
 
-## 🛠️ What It Does
+1. Detect your Node.js location (including nvm installs)
+2. Install the `setup-skills-master-mcp` skill into `.claude/skills/`
+3. Write `.mcp.json` with the correct `env.PATH` so the MCP server can find node
 
-Walks you through setting up `skills-master-mcp` end-to-end:
+Then restart Claude Code — the skills-master MCP server will connect automatically.
 
-| Step | What Happens |
-|------|-------------|
-| 1 | Detects your Node.js path (including nvm installs) |
-| 2 | Checks if `skills-master-mcp` is already available |
-| 3 | Writes the correct entry into `.mcp.json` with a hardened `env.PATH` |
-| 4 | Verifies the config is valid JSON |
-| 5 | Prompts you to restart Claude Code to activate the server |
+## Why this exists
 
-The critical part: Claude Code doesn't inherit your shell's `nvm` PATH at runtime. This skill handles that automatically — finding your node bin path and writing it into the MCP config's `env.PATH`.
-
----
-
-## ⚡ Usage
-
-After installing, just ask Claude:
+When Claude Code launches an MCP server it does not inherit your shell's nvm PATH. So if Node.js was installed via nvm, `npx` can find node in your terminal but not inside the MCP process, causing:
 
 ```
-set up skills-master-mcp for this project
+env: node: No such file or directory (exit 127)
 ```
 
+The installer detects where node actually lives and bakes that path into `.mcp.json` via the `env.PATH` field.
+
+## What the skill does
+
+Once installed, the `setup-skills-master-mcp` skill activates when you say things like:
+
+> Set up skills-master-mcp
+
+It walks you through:
+
+- Verifying Node.js and npx are reachable
+- Writing or merging `.mcp.json` with the PATH fix
+- Troubleshooting common issues
+
+## Manual install (no curl)
+
+```bash
+mkdir -p .claude/skills/setup-skills-master-mcp
+curl -fsSL https://raw.githubusercontent.com/incyd/skills-master-mcp-setup-skill/main/.claude/skills/setup-skills-master-mcp/SKILL.md \
+  -o .claude/skills/setup-skills-master-mcp/SKILL.md
 ```
-skills-master-mcp isn't working — can you fix the MCP config?
-```
 
----
-
-## ✅ After Setup
-
-Once the MCP server is running, you'll have access to:
-
-- `/plugin search <query>` — find skills on the marketplace
-- `/plugin install <skill>` — install any skill from GitHub
-- `read_skill`, `ai_search`, `install_skill` tools available to Claude in-session
