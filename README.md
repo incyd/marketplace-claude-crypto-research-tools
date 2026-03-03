@@ -44,6 +44,22 @@ Three options for connecting Claude to live data. Pick the one that fits your wo
 
 ---
 
+### 📦 Skills Registry
+
+17 vetted Claude Code skills across security, crypto research, content, orchestration, and quality. All passed skillvet's 48-check security scan.
+
+→ **[Browse the full registry](./skills/)** · [One-liner installs](./skills/INSTALL.md) · [Raw JSON](./skills/skills-registry.json)
+
+| Category | Skills |
+|----------|--------|
+| 🔒 Security | skillvet |
+| 🌐 Domain | x-research, x-mastery, twitter-algorithm-optimizer, web3-research, competitive-analysis, brand-voice-extractor |
+| 📄 Document Creation | prd, senior-architect, prompt-engineering, design-serialization-schema |
+| 🤖 Orchestration | multi-agent-coordination, multi-agent-analysis, swarm-orchestration, agent-memory-systems |
+| ✅ Quality | humanizer, validator-role-skill |
+
+---
+
 ## Quick Setup
 
 ### Native X AI MCP — Claude.ai
@@ -137,6 +153,10 @@ connectors/
   tavily-mcp/              ← Tavily web search MCP
 plugins/
   setup-skills-master-mcp/ ← Claude Code skill + MCP installer
+skills/
+  skills-registry.json     ← Machine-readable source of truth (17 skills)
+  README.md                ← Catalog grouped by category
+  INSTALL.md               ← One-liner install commands
 ```
 
 ---
