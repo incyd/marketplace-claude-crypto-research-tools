@@ -8,6 +8,20 @@
   },
   "plugins": [
     {
+      "name": "v3-daily-kol",
+      "source": {
+        "source": "github",
+        "repo": "incyd/claude-crypto-research-tools",
+        "path": "plugins/v3-daily-kol"
+      },
+      "description": "Four-agent daily X/Twitter research and engagement pipeline — pulls signals, scores by engagement, generates 20+ voice-matched replies and own-post recommendations every morning",
+      "author": {
+        "name": "incyd"
+      },
+      "strict": false,
+      "skills": ["./"]
+    },
+    {
       "name": "setup-skills-master-mcp",
       "source": {
         "source": "github",
