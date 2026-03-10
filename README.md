@@ -18,22 +18,24 @@ The goal is simple: **position your brand in the highest-signal conversations in
 
 ### [V3 Daily KOL](./plugins/v3-daily-kol/)
 
-A four-agent Claude pipeline that runs every morning to keep you in the right X/Twitter conversations — and tells you what to post.
+Most crypto content tools treat every day as day one. V3 Daily KOL builds a **personalized context database** that grows with every run — accumulating signal history, narrative trajectories, and account-specific knowledge across sessions. The longer it runs, the better it understands what's actually moving in your niche.
 
-Every day it pulls signals from your topic clusters and thought leader feeds, scores posts by engagement weight, and outputs:
+That context is what drives discovery. Instead of generic trending topics, you get narratives ranked by signal strength, validated across sources, and tracked through their lifecycle from emerging to established to fading.
+
+Every day it outputs:
 
 - **20+ engagement replies** in your voice, ready to post
 - **2–3 own-post recommendations** with supporting data and draft copy
-- A **growing knowledge base** of narratives in your space, updated weekly
+- **Narrative intelligence** — what's gaining momentum, what's peaking, what's fading in your space
 
-Four agents, clear contracts, append-only data — nothing is ever lost.
+Four agents, append-only data, persistent memory across every session.
 
 | Agent | Model | When | What it does |
 |-------|-------|------|-------------|
 | ① Onboarding | Opus 4.6 | Once | Builds your account profile from 200 posts — topics, keywords, voice, KOL list |
-| ② Daily Pull | Sonnet 4.6 | Daily | Pulls topic signals (Kaito + X API), TL timelines, your own posts |
-| ③ Analytics | Opus 4.6 | Daily | Scores posts, generates replies + post recommendations, mandatory humanizer pass |
-| ④ Weekly Learning | Opus 4.6 | Sundays | Reviews what worked, proposes KB updates and system improvements |
+| ② Daily Pull | Sonnet 4.6 | Daily | Pulls topic signals (Kaito + X API), TL timelines, your own posts — adds to context DB |
+| ③ Analytics | Opus 4.6 | Daily | Scores signals, detects narrative convergence, generates replies + post recs |
+| ④ Weekly Learning | Opus 4.6 | Sundays | Reads full history, proposes knowledge base updates and system improvements |
 
 Requires: Kaito AI · X API connector · Tavily
 
@@ -65,7 +67,7 @@ Three options for connecting Claude to live X/Twitter and web data:
 
 | Plugin | What it does |
 |--------|-------------|
-| [V3 Daily KOL](./plugins/v3-daily-kol/) | Four-agent daily pipeline — pull signals, generate replies + post recs, build narrative knowledge base |
+| [V3 Daily KOL](./plugins/v3-daily-kol/) | Personalized context database + 4-agent daily pipeline — discovers relevant narratives, generates replies and post recs |
 | [Setup Skills Master MCP](./plugins/setup-skills-master-mcp/) | Installs the skills-master MCP server so Claude can discover and install skills from within any conversation. Run `/setup-skills-master-mcp` to start. |
 
 ---
@@ -168,7 +170,7 @@ connectors/
   netrows-x-mcp/           ← Netrows X MCP (API key, 14 tools)
   tavily-mcp/              ← Tavily web search MCP
 plugins/
-  v3-daily-kol/            ← 4-agent daily X engagement pipeline
+  v3-daily-kol/            ← Personalized context DB + 4-agent daily pipeline
   setup-skills-master-mcp/ ← Claude Code skill + MCP installer
 skills/
   skills-registry.json     ← Machine-readable source of truth (17 skills)
