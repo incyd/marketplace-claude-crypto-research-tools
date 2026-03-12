@@ -13,7 +13,7 @@
       "name": "v3-daily-kol",
       "source": "./plugins/v3-daily-kol",
       "description": "Four-agent daily X/Twitter research and engagement pipeline — pulls signals, scores by engagement, generates 20+ voice-matched replies and own-post recommendations every morning",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "author": {
         "name": "Ash"
       },

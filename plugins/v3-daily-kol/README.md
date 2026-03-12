@@ -1,5 +1,7 @@
 # V3 Daily KOL
 
+> **v3.1 — Isolated Subagent Architecture** · [What changed](./CHANGELOG.md)
+
 Most crypto content tools treat every day as day one. V3 Daily KOL doesn't.
 
 It builds a **personalized context database** that grows with every run — accumulating your niche's post history, signal patterns, narrative trajectories, and knowledge base across sessions. The longer it runs, the better it understands which narratives are gaining momentum in your specific corner of the market, which thought leaders are worth watching, and which topics actually land with your audience.
@@ -29,13 +31,15 @@ That accumulated context is what drives discovery. Instead of generic trending t
 ## The four agents
 
 ```
-Agent ① Onboarding  (Opus 4.6)  — run once per account
+Agent ① Onboarding     (Opus 4.6)  — run once per account
          ↓
-Agent ② Daily Pull  (Sonnet 4.6) — runs daily
+Daily Orchestrator     — spawns isolated subagents
+  ├─ Agent ② Daily Pull  (Sonnet 4.6) → own context window
+  ├─ validate output
+  └─ Agent ③ Analytics   (Opus 4.6)  → own context window
          ↓
-Agent ③ Analytics   (Opus 4.6)  — runs daily, chained after ②
-         ↓
-Agent ④ Weekly      (Opus 4.6)  — runs Sundays
+Weekly Orchestrator    — spawns isolated subagent
+  └─ Agent ④ Weekly      (Opus 4.6)  → own context window
 ```
 
 ### Agent ① — Onboarding

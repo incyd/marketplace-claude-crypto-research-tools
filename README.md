@@ -16,7 +16,7 @@ The goal is simple: **position your brand in the highest-signal conversations in
 
 ## Featured Plugin
 
-### [V3 Daily KOL](./plugins/v3-daily-kol/)
+### [V3 Daily KOL](./plugins/v3-daily-kol/) — `v3.1` now available
 
 Most crypto content tools treat every day as day one. V3 Daily KOL builds a **personalized context database** that grows with every run — accumulating signal history, narrative trajectories, and account-specific knowledge across sessions. The longer it runs, the better it understands what's actually moving in your niche.
 
