@@ -1,24 +1,9 @@
 {
-  "name": "v3-1-daily-kol",
-  "version": "3.1.0",
-  "description": "AI-powered X/Twitter KOL engagement system with isolated subagent architecture. 4-agent pipeline: onboarding, daily data pull, analytics & content generation, weekly learning. Each agent runs as an isolated subagent with its own context window via orchestrator-gated execution.",
+  "name": "v3-daily-kol",
+  "version": "3.1.1",
+  "description": "4-agent pipeline for X/Twitter KOL engagement — onboarding, daily pull, analytics & content creation, weekly learning. Includes 10 specialized skills, 2 orchestrators, and full configuration stack.",
   "author": {
-    "name": "Ash Datsiuk"
+    "name": "incyd"
   },
-  "repository": "https://github.com/ashdatsiuk/v3-daily-kol",
-  "keywords": [
-    "twitter",
-    "x",
-    "kol",
-    "engagement",
-    "web3",
-    "crypto",
-    "defi",
-    "content",
-    "ai-agent",
-    "multi-agent",
-    "subagent",
-    "orchestrator"
-  ],
-  "license": "MIT"
+  "keywords": ["twitter", "kol", "content", "crypto", "web3"]
 }

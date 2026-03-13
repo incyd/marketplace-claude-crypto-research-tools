@@ -1,4 +1,24 @@
-# V3.1 Daily KOL — Isolated Subagent Architecture
+# Changelog
+
+---
+
+## v3.1.1 — Agent 2 Batched TL Processing
+
+**Problem:** Agent 2 was hitting context window limits processing 23 thought leaders in a single pass — ~330k chars of raw tweet data loaded simultaneously with no recovery path.
+
+**Fix:** Batched processing. TLs are split into groups of 5, each batch is clustered independently, raw tweet data is discarded between batches, and themes are merged across all batches at the end.
+
+**What this solved:**
+
+1. Peak context usage dropped ~65% — from ~420k chars to ~145k per run
+2. Theme quality improved — clustering 5 TLs produces tighter, more specific groupings than clustering 23 at once
+3. Pipeline scales automatically — add more TLs and batch count adjusts via `ceil(TL_count / 5)`, no config changes needed
+
+**Files changed:** `agents/agent-daily-pull.md`, `CLAUDE.md`
+
+---
+
+## v3.1 — Isolated Subagent Architecture
 
 ## The Problem
 

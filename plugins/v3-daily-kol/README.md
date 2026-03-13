@@ -1,6 +1,6 @@
 # V3 Daily KOL
 
-> **v3.1 — Isolated Subagent Architecture** · [What changed](./CHANGELOG.md)
+> **v3.1.1** — Agent 2 batched TL processing (65% peak context reduction) · [What changed](./CHANGELOG.md)
 
 Most crypto content tools treat every day as day one. V3 Daily KOL doesn't.
 

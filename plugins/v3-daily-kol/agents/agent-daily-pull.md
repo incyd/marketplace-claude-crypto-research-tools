@@ -175,7 +175,7 @@ connector: Connector B (ID from CLAUDE.md Section 2.1)
 - No sort parameter — use queryType: "Top" for highest-signal results
 - Returns ~20 results per call
 - Budget: same 10-combo cap applies
-- Normalization: Use Connector B normalization path (Section 2.5)
+- Normalization: Use Connector B normalization path (Section 2.6)
 - Set source_connector: "B" on all Tier 1 fallback results
 
 FALLBACK TIER 2 — Connector A search_x (LAST RESORT):
@@ -220,7 +220,7 @@ WHEN PRIMARY (Kaito+B) OR TIER 1 FALLBACK (Connector B search_tweets):
 
 #### 1.5.1 Primary Path: Kaito+B Normalization
 
-Normalize every Connector B tweet (fetched via `get_tweet_thread` from Kaito URLs) to the canonical post schema. This uses the **same field mapping as Mode B Section 2.5** (Connector B normalization), with `source_connector: "Kaito+B"`:
+Normalize every Connector B tweet (fetched via `get_tweet_thread` from Kaito URLs) to the canonical post schema. This uses the **same field mapping as Mode B Section 2.6** (Connector B normalization), with `source_connector: "Kaito+B"`:
 
 ```
 canonical = {
@@ -236,7 +236,7 @@ canonical = {
   retweets:         tweet.retweetCount,
   quotes:           tweet.quoteCount,
   bookmarks:        tweet.bookmarkCount,
-  created_at:       parse_connector_b_date(tweet.createdAt),  // see Section 2.5.1
+  created_at:       parse_connector_b_date(tweet.createdAt),  // see Section 2.6.1
   url:              tweet.url,
   lang:             tweet.lang,
   is_reply:         tweet.isReply,
@@ -250,11 +250,11 @@ canonical = {
 }
 ```
 
-> **NOTE**: This is identical to Mode B's Connector B normalization (Section 2.5) except `source_connector` = `"Kaito+B"` instead of `"B"`. All 23 canonical fields are populated from Connector B's `get_tweet_thread` response — no defaults or missing fields.
+> **NOTE**: This is identical to Mode B's Connector B normalization (Section 2.6) except `source_connector` = `"Kaito+B"` instead of `"B"`. All 23 canonical fields are populated from Connector B's `get_tweet_thread` response — no defaults or missing fields.
 
 #### 1.5.2 Tier 1 Fallback: Connector B `search_tweets` Normalization
 
-Same as Section 2.5 (Mode B normalization). Set `source_connector: "B"`.
+Same as Section 2.6 (Mode B normalization). Set `source_connector: "B"`.
 
 #### 1.5.3 Tier 2 Fallback: Connector A Normalization
 
@@ -360,6 +360,12 @@ mode_a_themes = [
 
 ## 2. Mode B — Thought-Leader Timeline Pull (Connector B: `get_user_tweets`)
 
+> **v3.2 — Batched Processing**: Mode B processes TLs in sequential batches of 5 to keep
+> per-batch context manageable. Batch count is computed dynamically: `ceil(TL_count / 5)`.
+> Each batch pulls, normalizes, scores, and clusters independently. Raw tweet data is
+> discarded after each batch — only compact theme objects carry forward. A final merge
+> step combines batch themes into the Mode B output.
+
 ### 2.1 Purpose
 
 Track what the Environment_User's thought leaders are posting. This surfaces emerging narratives from influential voices the Environment_User respects.
@@ -368,43 +374,136 @@ Track what the Environment_User's thought leaders are posting. This surfaces eme
 
 Read `account_data/profile/account_profile.md` Section 4.2 (Thought Leaders to Track). Extract all TL handles.
 
-Extract all TL handles from the table (currently 22 accounts for @incyd__).
-
-### 2.3 Execution Algorithm
+### 2.3 Batch Assignment
 
 ```
-BUDGET: Max 23 get_user_tweets calls per daily run (1 per TL). Page 1 only (no pagination — ~75% overlap makes it wasteful).
-PER-TL CAP: Keep up to 5 posts per TL after filtering (take top 5 by signal_score if more qualify).
+BATCH_SIZE = 5  (fixed — do not change without updating context budget estimates)
 
-1. For each TL handle in the thought-leader list:
+1. Read all TL handles from profile Section 4.2 → tl_list[]
+2. Compute batch count: num_batches = ceil(len(tl_list) / BATCH_SIZE)
+3. Assign TLs to batches using round-robin by priority:
+   a. Sort tl_list by follower count descending (proxy for signal contribution)
+   b. For i in range(len(tl_list)):
+        batch_index = i % num_batches
+        batches[batch_index].append(tl_list[i])
 
-   call: get_user_tweets(userName: "{tl_handle}")
-   connector: Connector B (ID from CLAUDE.md Section 2.1)
+   This distributes high-follower (high-signal) TLs evenly across batches,
+   preventing one batch from being all high-signal and another all low-signal.
 
-   - Returns ~20 posts (originals, quote tweets, AND pure RTs; no replies)
-   - If a call fails (timeout, 500 error, empty response), log and skip that TL
-   - DO NOT retry failed calls — move to next TL
+4. Log batch assignments:
+   "Mode B batches: {num_batches} batches of ~{BATCH_SIZE} TLs"
+   For each batch: "Batch {n}: {handle_list}"
 
-2. From each response, extract tweets from response.data.tweets[]
-   - Filter: exclude posts older than 48 hours (same freshness window as Mode A)
-   - Filter: exclude posts with views < 100 (noise floor)
-   - Cap: keep top 5 posts per TL by signal_score (if > 5 qualify after filtering)
-   - NOTE: get_user_tweets returns originals, QTs, AND pure RTs. Keep all types —
-     RTs reveal what TLs find worth amplifying, which is signal in itself.
-     Pure RTs can be identified by `retweeted_tweet != null` for downstream analysis.
-
-3. Collect all qualifying tweets across all TLs into a flat list
-   - Dedup by post_id across all TL results
-   - Tag each tweet with the TL handle that sourced it (metadata only)
+Example with 23 TLs → 5 batches (5, 5, 5, 5, 3):
+  Batch 1: TL[0], TL[5], TL[10], TL[15], TL[20]
+  Batch 2: TL[1], TL[6], TL[11], TL[16], TL[21]
+  Batch 3: TL[2], TL[7], TL[12], TL[17], TL[22]
+  Batch 4: TL[3], TL[8], TL[13], TL[18]
+  Batch 5: TL[4], TL[9], TL[14], TL[19]
 ```
 
-### 2.4 Author Metadata
+### 2.4 Per-Batch Execution Algorithm
 
-Connector B `get_user_tweets` responses already include the `author` object with `followers` and `isBlueVerified`. No additional enrichment needed for Mode B posts.
+```
+BUDGET: 1 get_user_tweets call per TL. Page 1 only (no pagination).
+PER-TL CAP: Keep up to 5 posts per TL after filtering (top 5 by signal_score).
+PER-BATCH THEME CAP: max 4 themes per batch (merge step reduces to final 10).
+PER-BATCH POST CAP: max 3 posts per theme within a batch.
 
-However, check the author cache from Mode A enrichment — if any TL author was already looked up, reuse that data rather than making redundant calls.
+FOR batch_index IN range(num_batches):
+  tl_handles = batches[batch_index]
+  batch_posts = []
 
-### 2.5 Normalization
+  # --- STEP 1: PULL ---
+  For each TL handle in tl_handles:
+
+    call: get_user_tweets(userName: "{tl_handle}")
+    connector: Connector B (ID from CLAUDE.md Section 2.1)
+
+    - Returns ~20 posts (originals, quote tweets, AND pure RTs; no replies)
+    - If a call fails (timeout, 500 error, empty response), log and skip that TL
+    - DO NOT retry failed calls — move to next TL
+
+  From each response, extract tweets from response.data.tweets[]
+    - Filter: exclude posts older than 48 hours (same freshness window as Mode A)
+    - Filter: exclude posts with views < 100 (noise floor)
+    - Cap: keep top 5 posts per TL by signal_score (if > 5 qualify after filtering)
+    - NOTE: get_user_tweets returns originals, QTs, AND pure RTs. Keep all types —
+      RTs reveal what TLs find worth amplifying, which is signal in itself.
+      Pure RTs can be identified by `retweeted_tweet != null` for downstream analysis.
+
+  Collect qualifying tweets into batch_posts[]
+    - Dedup by post_id within batch
+    - Tag each tweet with the TL handle that sourced it (metadata only)
+
+  # --- STEP 2: NORMALIZE (Section 2.6) ---
+  Normalize all batch_posts to canonical schema.
+
+  # --- STEP 3: SCORE (Section 2.7) ---
+  Compute signal scores for all normalized batch posts.
+
+  # --- STEP 4: CLUSTER ---
+  Cluster batch posts into themes using Section 1.7 algorithm with these overrides:
+    - max_themes: 4 (not 10 — budget is split across batches)
+    - max_posts_per_theme: 3
+    - source_mode: "thought-leaders"
+    - Theme label specificity rules from Section 1.7 step 2 apply equally here.
+
+  # --- STEP 5: COMPACT ---
+  Store batch themes in all_batch_themes[].
+  DISCARD all raw tweet data, normalized posts, and scored posts for this batch.
+  Only the compact theme objects (label + signal + posts array) carry forward.
+
+  Log: "Batch {batch_index+1}/{num_batches}: {len(tl_handles)} TLs,
+        {len(batch_posts)} posts after filter, {len(batch_themes)} themes"
+
+  # Context now holds: agent spec (static) + Mode A themes + previous batch
+  # themes (compact) — ready for next batch without context pressure.
+```
+
+### 2.5 Theme Merge Algorithm
+
+After all batches complete, merge batch-level themes into the final Mode B output:
+
+```
+INPUT: all_batch_themes (up to 4 × num_batches themes)
+
+STEP 1 — Cross-batch dedup:
+  Compare theme labels across batches for semantic overlap.
+  Two themes from different batches are DUPLICATES if ANY of:
+    (a) 2+ shared author handles in their post lists, OR
+    (b) Same protocol/project name appears in both theme labels, OR
+    (c) Posts in both themes share a conversationId (same Twitter thread)
+
+  IF duplicate found:
+    → MERGE: combine post lists, average signal_strength, union unique_authors
+    → Use the more specific theme label
+    → Cap merged theme at 3 posts (top by signal_score)
+
+STEP 2 — Re-apply singleton rule:
+  After merge, any theme with only 1 post:
+    → Try to merge into closest existing multi-post theme
+    → If no match, drop
+
+STEP 3 — Select top 10:
+  Sort all remaining themes by signal_strength descending.
+  Keep top 10 themes.
+  Verify total posts ≤ 30 (cap at 3 per theme).
+
+STEP 4 — Re-label if needed:
+  Merged themes may need label updates to reflect combined content.
+  Apply same specificity rules from Section 1.7 step 2.
+  Mode B themes referencing multiple TLs should use the shared topic, not
+  a generic category (e.g., "Morpho institutional lending — TheDeFinvestor,
+  DeFi_Dad" not "DeFi lending").
+
+OUTPUT: mode_b_themes (up to 10, same schema as Section 2.10)
+
+Log: "Merge: {pre_merge_count} batch themes → {post_merge_count} after dedup →
+      {final_count} final themes, {total_posts} total posts"
+```
+
+### 2.6 Normalization
 
 Normalize every Connector B tweet to the canonical post schema using `data_schema_map.md` Section 3.1:
 
@@ -422,7 +521,7 @@ canonical = {
   retweets:         tweet.retweetCount,
   quotes:           tweet.quoteCount,
   bookmarks:        tweet.bookmarkCount,
-  created_at:       parse_connector_b_date(tweet.createdAt),  // see 2.5.1
+  created_at:       parse_connector_b_date(tweet.createdAt),  // see 2.6.1
   url:              tweet.url,
   lang:             tweet.lang,
   is_reply:         tweet.isReply,
@@ -436,7 +535,7 @@ canonical = {
 }
 ```
 
-#### 2.5.1 Date Parsing — Connector B
+#### 2.6.1 Date Parsing — Connector B
 
 Connector B `createdAt` format: `"Sat Feb 28 18:44:17 +0000 2026"`
 
@@ -447,31 +546,26 @@ Parsing steps:
 2. Map month abbreviation → number: Jan=01, Feb=02, ..., Dec=12
 3. Assemble: `"{year}-{month}-{day}T{time}Z"`
 
-### 2.6 Signal Scoring
+### 2.7 Signal Scoring
 
-Same formula as Mode A (Section 1.6). Apply to all Mode B posts.
+Same formula as Mode A (Section 1.6). Apply to all Mode B posts (within each batch).
 
-### 2.7 Theme Clustering
+### 2.8 Author Metadata
 
-Same algorithm as Mode A (Section 1.7), with these differences:
+Connector B `get_user_tweets` responses already include the `author` object with `followers` and `isBlueVerified`. No additional enrichment needed for Mode B posts.
 
-```
-- Select top 10 themes (not 7 — broader coverage of TL landscape)
-- Total posts across all themes: max 30
-- source_mode: "thought-leaders"
-- Within each theme: keep up to 3 posts (distribute across themes)
-- Theme label specificity rules from Section 1.7 step 2 apply equally here.
-  Mode B themes referencing multiple TLs should use the shared topic, not
-  a generic category (e.g., "Morpho institutional lending — TheDeFinvestor,
-  DeFi_Dad" not "DeFi lending").
-```
+However, check the author cache from Mode A enrichment — if any TL author was already looked up, reuse that data rather than making redundant calls.
 
-### 2.8 Convergence Detection
+### 2.9 Convergence Detection
 
-After Mode B clustering, cross-reference with Mode A themes:
+> **Timing**: Convergence runs AFTER the theme merge step (Section 2.5), NOT after
+> per-batch clustering. The merge produces the final `mode_b_themes`, which is what
+> gets compared against Mode A themes.
+
+After Mode B merge, cross-reference with Mode A themes:
 
 ```
-For each Mode B theme:
+For each Mode B theme (from merge output):
   For each Mode A theme:
     IF theme topics substantially overlap — defined as meeting AT LEAST ONE of:
       (a) 1+ shared keyword combo from the account profile, OR
@@ -496,7 +590,7 @@ VALIDATION GATE (mandatory — run AFTER all convergence flags are set):
       Review theme clustering quality — themes may be too broad."
 ```
 
-### 2.9 Mode B Output
+### 2.10 Mode B Output
 
 Hold Mode B results in memory alongside Mode A results.
 
@@ -560,7 +654,7 @@ Normalize to the own_posts schema (NOT the full canonical schema — see `data_s
 own_post = {
   post_id:          tweet.id,
   text:             tweet.text,
-  created_at:       parse_connector_b_date(tweet.createdAt),  // see Section 2.5.1
+  created_at:       parse_connector_b_date(tweet.createdAt),  // see Section 2.6.1
   views:            tweet.viewCount,
   likes:            tweet.likeCount,
   replies:          tweet.replyCount,
@@ -732,12 +826,19 @@ Mode A (Topics — Kaito-First):
   Themes generated: {N}
   Smart engagement tweets: {N} (tweets with Kaito smart_engagement > 0)
 
-Mode B (Thought Leaders):
+Mode B (Thought Leaders — Batched, {num_batches} batches of ~5):
   TLs pulled: {N}/{total TLs in profile}
   TLs skipped (error): {list or "none"}
-  Raw posts returned: {N}
-  After dedup + filtering: {N}
-  Themes generated: {N}
+  Per-batch breakdown:
+    Batch 1: {N} TLs, {N} posts after filter, {N} themes
+    Batch 2: {N} TLs, {N} posts after filter, {N} themes
+    ... (one line per batch)
+  Merge:
+    Pre-merge themes: {N} (sum across batches)
+    Cross-batch duplicates merged: {N}
+    Singletons absorbed/dropped: {N}
+    Final themes: {N}/10
+    Final posts: {N}/30
   Convergence themes: {N}
 
 Mode C (Own Posts):
@@ -800,7 +901,8 @@ Status: ✅ COMPLETE / ⚠️ PARTIAL (modes that failed) / ❌ FAILED (critical
 - get_user_info (Connector B): Soft cap at 5 calls for Mode A enrichment.
   If > 5 unique authors, prioritize authors with most posts in results.
 
-- get_user_tweets (Connector B): Max 23 calls for Mode B (1 per TL) + 1 call for Mode C (own handle) = 24 calls typical.
+- get_user_tweets (Connector B): 1 call per TL for Mode B + 1 call for Mode C (own handle). Total = TL_count + 1.
+  Mode B batching: TLs processed in batches of 5, themes generated per-batch, then merged. Total API calls unchanged.
   Per-TL cap: keep up to 5 posts per TL after freshness/noise filtering (top 5 by signal_score).
 ```
 

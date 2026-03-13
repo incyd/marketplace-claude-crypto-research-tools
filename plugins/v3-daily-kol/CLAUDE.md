@@ -217,7 +217,7 @@ Connector IDs are environment-specific — each Cowork installation assigns its 
 |----------|-------|-------------|
 | Kaito `kaito_advanced_search` | Mode A uses ~6-10 calls/day (of 80/day shared budget) | Agent ② tracks cumulative daily Kaito usage. Before each call, verify total < 80. If budget exhausted, switch to Connector B `search_tweets` fallback. See `agents/agent-daily-pull.md` Section 1.3. |
 | Connector A `search_x` | Max 10 calls/day (**fallback only** — primary keyword search now via Kaito) | Agent ② config tracks call count. **⚠️ LAST RESORT**: Only activated if both Kaito and Connector B `search_tweets` fail. Pay-per-use credits (402 CreditsDepleted). See `agents/agent-daily-pull.md` Section 1.3.2. |
-| Connector B `get_user_tweets` | Max 20 tweets per call (originals + quote tweets; no replies, no pure RTs). **Mode B budget: 23 calls/day (1 per TL), up to 5 posts per TL after filtering.** Mode C: 1 call. | Used by Agent ② for daily TL/own pulls. NOT for onboarding — use `search_tweets` instead. Pagination has ~75% overlap between pages — dedup by tweet ID |
+| Connector B `get_user_tweets` | Max 20 tweets per call (originals + quote tweets; no replies, no pure RTs). **Mode B budget: 1 call per TL (dynamically computed), up to 5 posts per TL after filtering. TLs processed in batches of 5 — batch count = `ceil(TL_count / 5)`.** Mode C: 1 call. | Used by Agent ② for daily TL/own pulls. NOT for onboarding — use `search_tweets` instead. Pagination has ~75% overlap between pages — dedup by tweet ID |
 | Connector B `search_tweets` | Max 20 tweets per call (all types incl. replies) | Used by Agent ① for 200-post onboarding pull (budget: 20 calls). Also used by Agent ② as **Mode A fallback 1** if Kaito unavailable (budget: 10-call cap shared with primary). |
 | Kaito (all tools) | Max 80 calls/day across ALL agents | Runtime check before each call |
 | Tavily | Generous (1000+/day); **Agent ③ max 10 calls per run** | Agent ③ config tracks per-run count. If budget exhausted mid-run, skip remaining enrichment. |
@@ -331,7 +331,7 @@ Weights derived from X algorithm open-source analysis (`x-mastery` skill): repli
 - Theme labels are human-readable (e.g., "ETH restaking yield")
 - Each theme MUST have 2+ posts to qualify
 - **Mode A (topics)**: Top 7 themes, up to 5 posts each
-- **Mode B (thought leaders)**: Top 10 themes, up to 5 posts per TL (max ~115 posts from 23 TLs before theme filtering)
+- **Mode B (thought leaders)**: Batched processing — TLs split into batches of 5 (batch count = `ceil(TL_count / 5)`, computed dynamically). Each batch clusters up to 4 themes with max 3 posts each. After all batches, a merge step deduplicates cross-batch themes and selects top 10 final themes (max 30 posts total). See `agents/agent-daily-pull.md` Sections 2.3–2.5.
 - **Convergence flag**: `true` if a theme appears in BOTH Mode A and Mode B with 3+ unique authors
 - **Convergence validation gate**: If >50% of themes are flagged convergent, re-run with stricter matching (2+ shared keyword combos OR 3+ shared author handles). Log convergence ratio in completion report. See `agent_daily_pull.md` Section 2.8 for full algorithm.
 - **Theme label specificity**: Labels MUST reference a specific protocol/project, measurable event, or named narrative. BANNED: generic labels like "Crypto general", "Market sentiment", "DeFi ecosystem". See `agent_daily_pull.md` Section 1.7 step 2.
